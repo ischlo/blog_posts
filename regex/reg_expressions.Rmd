@@ -1,0 +1,180 @@
+---
+title: "Regular expressions"
+author: "Ivann Schlosser"
+output: 
+   html_document: 
+    code_folding: show
+    toc: yes
+    toc_float: yes
+    css: style_rmd.css
+    number_sections: yes
+    code_download: yes
+    highlight: pygments
+    fig_width: 6
+    fig_height: 4
+    fig_caption: yes
+    df_print: kable
+    theme: yeti
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+
+library(formatR)
+knitr::opts_chunk$set(echo = TRUE
+                      ,eval = TRUE
+                      ,include = TRUE
+                      ,message = FALSE
+                      ,warning = FALSE
+                      ,fig_caption = FALSE
+                      ,out.width = "80%"
+                      ,fig.align = "center"
+                      # ,tidy = TRUE
+                      ,cache = FALSE)
+
+```
+# Introduction
+
+This tutorial will introduce the basics of regular expressions, through some initial considerations and then concrete examples of varying difficulty. 
+
+
+# Regular expressions
+
+Let's refer to [Wikipedia](https://en.wikipedia.org/wiki/Regular_expression) to see what we are working with in this article: 
+
+> A regular expression (shortened as regex or regexp; sometimes referred to as rational expression) is a sequence of characters that specifies a search pattern in text. Usually such patterns are used by string-searching algorithms for "find" or "find and replace" operations on strings, or for input validation.
+
+This definition straight away frames out the types of problem we can handle with regexes. When faced with pure text, or a variable in a data frame that contains strings in which we are only looking for specific a information that we want to extract for further use, we might use regular expressions to solve this kind of problems. 
+
+A regular expression will describe a sequence of characters, pretty much as detailed as one can imagine, that can then be targeted and extracted by the computer. Now let's look at how to build a regular expression. 
+
+# Building regex first steps
+
+While this tutorial is in R, the formalism of regexes is pretty much similar across a range of languages and thus the details of ths tutorial hod valid.
+
+Let's imagine every possible character that can be contained in textual data, and start breaking it into categories. 
+
+## Categories of characters
+
+The following table presents a non-exhaustive set of character categories:
+
+
+| Category                	| Symbol       	| Example   	| Opposite             	| Symbol 	| Example   	|
+|-------------------------	|--------------	|-----------	|----------------------	|--------	|-----------	|
+| numbers                 	|      \\d     	|   12387   	| non-numbers          	|   \\D  	|   :-dfv*  	|
+| letters (lower case)    	|     [a-z]    	|   jsknvs  	| letters (upper case) 	|  [A-Z] 	|   SDFVM   	|
+| letters (lower & upper) 	|   [a-zA-Z]   	|   fvFVDf  	| -                    	|    -   	|     -     	|
+| numbers & letters       	| [:alphanum:] 	|   3k4rF4  	| -                    	|    -   	|     -     	|
+| words                   	|      \\w     	|   Hello   	| non-words            	|   \\W  	|     !     	|
+| whitespace              	|      \\s     	|    " "    	| non whitespace       	|   \\S  	|  "kj4&n"  	|
+| boundaries of words     	|      \\b     	| \_hello\_ 	| interior of words    	|   \\B  	| h_e_l_l_o 	|
+
+As you can see, some categories have a designated letter, but in other cases they can be designated by placing the characters of interest between square braquets. This allows to customize and create your own categories of regexes suitable for your specific needs. For example, let's say you want to find numbers or the letter *h*, this would look like `[\dh]`. Inversely, if you want to match for everything except those characters, place the `^` in front of the others: `[^\dh]`.
+
+Other symbols help us with specifying repetitions, or ordering: 
+
+* Positioning 
+  + `^` : beginning of sequence, `^\d`
+  + `\$` : end of sequence, `\dh\$`
+* Repetition
+  + `*` : zero or more times
+  + `+` : one or more time
+  + `{min, max}` : minimal and maximal number of repetitions
+  + `{n}` : match exactly n times
+* Any symbol
+  + `.` : match any symbol
+  + `?` : match potentially a symbol
+* Groups
+  + `()` : group elements
+* Logical
+  + `|` : logical or
+
+It is possible to group several characters by enclosing them into round brackets`()`. This will treat whatever is inside them as one single block of characters. We can include any of the mentioned regex symbols within them, particularly the logical _or_ that can help with differentiating cases. 
+
+
+
+# Examples
+
+We will be using the [*stringr*](https://stringr.tidyverse.org) package, part of the [*tydiverse*](https://www.tidyverse.org) ecosystem of package. You can also try using base R which is already pretty strong for manipulating strings and regexes. 
+Let's look at this list of examples we can use to test our newly acquired knowledge. Quite often you might need to work with dates or times, and they can happen to be collected in a way that's pretty messy. You can imagine that you have all these corner cases that occur in your data and ou want to still be able to accurately get dates and times.
+
+```{r}
+
+examples_dates <- c(
+  "jlnsdc19/04/2022sjkscd"
+  ,"34kjkbs83n19-04-2022kn3r3jwk"
+  ,"kjnwf34kb7-4-22wkj34"
+  ,"dkfbc19/04-2022fwb3k"
+)
+
+examples_times <- c(
+  "nsdvln18:03:58sdlfkjns"
+  ,"sflks18.03:58sdlfjn"
+)
+
+```
+
+Let's try to understand the basic structure of the part we are interested in: 
+the day can be either one or two digits, then there is a separating element, either $/$ or $-$, then the year should be either two or 4 digits. Finally we assume that the surrounding character are not digits otherwise there could be confusion. Let's capture that with a regex:
+
+```{r}
+
+library(stringr)
+
+date_regex <- "(\\d{1,2})[/-](\\d{1,2})[/-](\\d{2}|\\d{4})"
+
+dates <- str_extract(examples_dates,date_regex)
+
+print(dates)
+```
+Let's now format all the dates to be `dd/mm/yyyy`, for that we need to replace all other separators by `/`.
+
+
+```{r}
+
+dates <- str_replace(dates,"-","/")
+
+print(dates)
+
+```
+
+With times the problem is pretty similar, but generally time is represented as three pairs of digits, for hour, minute and second second separated by either $.$ or $:$. 
+
+
+```{r}
+
+time_regex <- "(\\d{2})[\\.:](\\d{2})[\\.:](\\d{2}|)"
+
+times <- str_extract(examples_times,time_regex)
+
+print(times)
+
+```
+And again here, format all the times to `hh:mm:ss`. 
+
+```{r}
+
+times <- str_replace(times,"\\.",":")
+
+print(times)
+
+```
+
+
+# References
+
+
++ [Wikipedia](https://en.wikipedia.org/wiki/Regular_expression)
++ [R4DS](https://r4ds.had.co.nz/strings.html#matching-patterns-with-regular-expressions)
++ [Geeks4Geeks](https://www.geeksforgeeks.org/write-regular-expressions/)
++ [Medium post](https://towardsdatascience.com/regular-expressions-clearly-explained-with-examples-822d76b037b4) by Jason Chong
+
++ [regexpattern](https://regexpattern.com/regular-expression-cheatsheet/)
++ [mozilla developers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Cheatsheet)
++ Cheatsheet: 
+  - [datacamp](https://res.cloudinary.com/dyd911kmh/image/upload/v1665049611/Marketing/Blog/Regular_Expressions_Cheat_Sheet.pdf)
+
+
+
+

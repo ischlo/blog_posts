@@ -1,0 +1,173 @@
+---
+title: "PostgreSQL with R"
+author: "Ivann Schlosser"
+output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float: yes
+    css: style_rmd.css
+    number_sections: yes
+    code_download: yes
+    highlight: pygments
+    fig_width: 6
+    fig_height: 4
+    fig_caption: yes
+    df_print: kable
+    theme: yeti
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+
+library(formatR)
+knitr::opts_chunk$set(echo = TRUE
+                      ,eval = FALSE
+                      ,include = TRUE
+                      ,message = FALSE
+                      ,warning = FALSE
+                      ,fig_caption = FALSE
+                      ,out.width = "80%"
+                      ,fig.align = "center"
+                      # ,tidy = TRUE
+                      ,cache = FALSE)
+
+```
+
+# Introduction
+
+This tutorial will present a straightforward way to get started with databases using R. These tools together allow to combine the user friendliness of R and add to it the computing power and speed of SQL databases. A minimum knowledge of SQL is preferable to have but as we will see one can use these tools together even without it. Using external databases for storing and doing certain operations on data is inevitable when the size of data sets reaches a certain size, or you want to provide your data to be accessed and used by others, among the many applications. This tutorial aims at uncovering some of the basic things to know and consider. 
+
+# Type of database
+
+There are several types of opensource data bases that all have great performances and functions. Some are better suited for certain tasks than other, and in this tutorial we will use PostgreSQL which is very good for all the regular operations on data sets, has a great set of packages that build the bridge with R, and also can be quite easily transformed into spatial databases for operations with geometries and coordinates, thanks to an extension called [postgis](https://postgis.net). 
+
+# Packages
+The following set of packages will be used throughout. 
+
+```{r}
+library(DBI) # translates as Data Base Interface
+library(RPostgreSQL) 
+library(dbplyr) # extension of dplyr to use with data bases
+library(dplyr)
+library(readr)
+library(data.table)
+# library(RSQLite)
+library(microbenchmark)
+
+```
+
+# Installation
+
+This part of the tutorial is relevant for mac users, the steps to install postgres or sqlite on windows will be different. 
+Every mac computer comes with SQLite preinstalled, you need, however to set up postgres by hand. The first step to do so is to install a package manager if not already done. On mac, homebrew is probably the most popular one, you can find the instructions on the [website](https://brew.sh). It takes only a few terminal commands to do so. Once it is installed, your R environment should be able to find it by itself.
+
+You can also check that the installation went well by entering the following command in the terminal: 
+
+```{bash}
+psql
+```
+
+This will open a postgres interface in the terminal, you can already do all the data base tasks you want in this window, however, some more user friendly software has been developed to access your postgres database such as [Postico](https://eggerapps.at/postico2/) or for a much greater set of possibilities [PgAdmin](https://www.pgadmin.org). These softwares are usually refered to as **clients**, for more on this refer to [this](https://wiki.postgresql.org/wiki/PostgreSQL_Clients) wiki for example.  
+
+# Database set-up
+
+We now need to create the database that we will use to store and manipulate the data. For each R command to do something on the data base, a plain SQL command to be run through a database client or simply in the terminal will be shown. Since SQLite is by default present on mac machines, it is usually a bit easier to use, we will stick to postgres and for that will need to perform a first step in the terminal before. If you are using Rstudio, you can simply click on the terminal window, which usually is located right under the frame for text editing. 
+Type this into the terminal `{bash} createdb test_db`.
+This will create the simplest database. In general, wou will want to add some constraints, such as a user, an administrator, and create a certain level of protection of your data base. These steps can be the topic of another tutorial, but for now, we will keep it simple. We now have a data base and can connect to it through R and through the terminal. 
+
+```{r}
+con <- DBI::dbConnect(PostgreSQL()
+                      ,dbname = "test_db")
+
+```
+We create an object representing a connection to the database, which we will then pass on to functions in order to return us some results in R from the database.
+Now let's check what we have on the cluster:
+```{r}
+dbListTables(con) # it should work but return an empty character !!
+```
+
+And in the terminal you can type `{bash} psql test_db` to access the database, you will notice your command line changing, and then type the meta command, which is proper to psql that shows you the tables in your db `\dt`.  
+
+# Data Set
+Databases will prove particularly useful when data sets become increasingly big, and when we will only need a fraction of the data for our current analysis. Let's choose a data set big enough to prove this point, but not to big either.
+
+```{r}
+
+flows <- readr::read_csv("/Users/ivann/Documents/CASA_quant/data/wu03uk_tidy.csv")
+
+```
+
+
+```{r results = 'asis',echo=FALSE}
+
+knitr::kable(head(flows)
+             ,caption = "flows data set"
+             ,align = "l") 
+
+```
+
+Let's see the dimensions of the dataset:
+```{r}
+
+dim(flows)
+
+```
+it's a pretty big data set ! 
+
+# Importing data
+
+This data set is big, let's add it into our data base directly from R and see how we can use it and the performance we gain from this operation. 
+
+Let's create the table in the data base, this step initiates it, but does not yet load the data into it.
+
+```{r}
+dbCreateTable(conn = con
+              ,name = "flows"
+              ,fields = flows)
+```
+
+Now let's see if it appears in the database:
+
+```{r}
+dbListTables(con)
+```
+Great ! Now to load data into it:
+
+```{r}
+dbWriteTable(conn = con
+             ,name = "flows"
+             ,value = flows
+             ,overwrite = TRUE
+             ,row.names = FALSE)
+
+```
+
+# Basic manipulations
+
+## Summarising
+
+## Filtering
+
+
+# Advanced manipulations
+
+## Indexing
+
+## Views 
+
+## Altering tables
+
+### Adding rows
+
+### Modifying values
+
+
+# Sending queries
+
+# Benchmarking
+
+
+
+

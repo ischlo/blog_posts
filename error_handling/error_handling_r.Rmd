@@ -1,0 +1,98 @@
+---
+title: "Error handling in R"
+author: "Ivann Schlosser"
+output: 
+  output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float: yes
+    css: style_rmd.css
+    number_sections: yes
+    code_download: yes
+    highlight: pygments
+    fig_width: 6
+    fig_height: 4
+    fig_caption: yes
+    df_print: kable
+    theme: yeti
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+
+# refer to https://bookdown.org/yihui/rmarkdown/template-structure.html 
+library(formatR)
+knitr::opts_chunk$set(echo = TRUE
+                      ,eval = FALSE
+                      ,include = TRUE
+                      ,message = FALSE
+                      ,warning = FALSE
+                      ,fig_caption = FALSE
+                      ,out.width = "80%"
+                      ,fig.align = "center"
+                      # ,tidy = TRUE
+                      ,cache = FALSE)
+
+```
+
+# Introduction
+
+Whether you are a researcher, a student, a software engineer, a data scientist, you will always encounter numerous bugs, errors and other types of unexpected behavior from your machine when working on code. And while this is pretty much inevitable, there are good habits and tricks to learn in order to reduce the time spent figuring out, solving problems. Ultimately, the goal is to build efficient code, that is well commented, fault proof, easily reusable, and user friendly. All these aspects are important when developping software that can ultimately be shared, and used by others. 
+
+So this post will focus on common mistakes that are encountered, the main things to keep in mind, how to build functions that do specifically what you ask them to every time, or notify you of what is wrong. 
+
+This tutorial will be about R, but the general ideas covered apply more generally to problem solving and software development. 
+
+#
+
+R being very user friendly, it does a lot in the background in order to make our user experience as comfortable as possible compared to other, more low level languages like C, C++, java etc... It resembles python in that sense. And a few other more modern languages that aim at being user friendly but also powerful, such as julia for example. 
+
+
+```{r}
+
+x <- list(20, "20", c(1,2,"eoinrf","5nj4k"), "304", "4")
+typeof(x)
+mode(x)
+str(x)
+
+as.vector(x)
+
+lapply(x,typeof)
+
+is.vector(x)
+is.list(x)
+
+unlist(x)
+
+mode(unlist(x))
+
+inherits(x, "list")
+inherits(x, "vector")
+
+class(x)
+
+is.atomic(x)
+is.atomic(unlist(x))
+
+
+
+```
+
+
+
+
+```{r}
+x <- 2
+
+ex <- expression(x^2)
+
+parse(ex)
+
+eval(ex)
+
+```
+
+
+
