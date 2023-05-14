@@ -6,7 +6,7 @@ output:
     code_folding: show
     toc: yes
     toc_float: yes
-    css: www/style_rmd.css
+    css: style_rmd.css
     number_sections: yes
     code_download: yes
     highlight: pygments
@@ -17,7 +17,7 @@ output:
     theme: yeti
 editor_options: 
   chunk_output_type: console
-knit: (rmarkdown::render(input="michelin_web_scrapping/michelin_data_engineering.Rmd",output_file="index.html",clean=TRUE))
+knit: (rmarkdown::render(input="michelin_web_scrapping/michelin_data_engineering.Rmd",output_file="index.html"))
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
@@ -59,7 +59,9 @@ and that's it !
 Now we will investigate the websites content at [this](https://guide.michelin.com/gb/en/restaurants) link (depending on which country you are connecting from, this page can have a different aspect and language, but we keep the english version of the site). 
 
 ```{r echo=FALSE}
+
 knitr::include_graphics("www/michelin_restaurants.png")
+
 ```
 
 
@@ -116,6 +118,7 @@ name <- html |>
 
 ```{r echo=FALSE,include=FALSE}
 head(name)
+
 ```
 
 
@@ -144,7 +147,7 @@ pre_link <- html |>
   html_elements(".link") |>
   html_attr("href")
 
-pre_link <- paste("https://guide.michelin.com",pre_link[-c(1:17)],sep = "")
+pre_link <- paste("https://guide.michelin.com",pre_link[-c(1:18)],sep = "")
 
 ```
 
@@ -154,6 +157,7 @@ pre_link <- paste("https://guide.michelin.com",pre_link[-c(1:17)],sep = "")
 Next, the individual variables are combined in a single data set.
 
 ```{r}
+
 michelin_guide_scrap <- data.frame(name
                                    ,"lat"=as.numeric(lat)
                                    ,"lng"=as.numeric(lng)

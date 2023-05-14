@@ -2,7 +2,6 @@
 title: "Error handling in R"
 author: "Ivann Schlosser"
 output: 
-  output: 
   html_document: 
     code_folding: show
     toc: yes
@@ -18,6 +17,7 @@ output:
     theme: yeti
 editor_options: 
   chunk_output_type: console
+knit: (rmarkdown::render(input="./error_handling/error_handling_r.Rmd",output_file="index.html"))
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
@@ -39,7 +39,9 @@ knitr::opts_chunk$set(echo = TRUE
 
 # Introduction
 
-Whether you are a researcher, a student, a software engineer, a data scientist, you will always encounter numerous bugs, errors and other types of unexpected behavior from your machine when working on code. And while this is pretty much inevitable, there are good habits and tricks to learn in order to reduce the time spent figuring out, solving problems. Ultimately, the goal is to build efficient code, that is well commented, fault proof, easily reusable, and user friendly. All these aspects are important when developping software that can ultimately be shared, and used by others. 
+This blog post will cover exception handling in R. The main purpose of it is to ultimately build robust, fault proof scripts, that can be part of your everyday workflow, but also be easily shared with others, via packages or version control and perform as expected in any situation or raise informative messages to the user as to the possible problems.
+
+Whether you are a researcher, a student, a software engineer, a data scientist, you will always encounter numerous bugs, errors and other types of unexpected behavior from your machine when working on code. And while this is pretty much inevitable, there are good habits and tricks to learn in order to reduce the time spent figuring out, solving problems. Ultimately, the goal is to build efficient code, that is well commented, fault proof, easily reusable, and user friendly. All these aspects are important when devellopping software that can ultimately be shared, and used by others. 
 
 So this post will focus on common mistakes that are encountered, the main things to keep in mind, how to build functions that do specifically what you ask them to every time, or notify you of what is wrong. 
 
@@ -48,7 +50,6 @@ This tutorial will be about R, but the general ideas covered apply more generall
 #
 
 R being very user friendly, it does a lot in the background in order to make our user experience as comfortable as possible compared to other, more low level languages like C, C++, java etc... It resembles python in that sense. And a few other more modern languages that aim at being user friendly but also powerful, such as julia for example. 
-
 
 ```{r}
 
@@ -93,6 +94,35 @@ parse(ex)
 eval(ex)
 
 ```
+
+
+## Writing functions
+
+Let's look at the output of the following operation, it is intentionally misused to raise an error message:
+
+One of the most important elements of any good software is it's ability to put the user in a situation, where it is almost impossible to produce an error, and if an error still occurs somewhere, then the message associated to it should allow the user to straight away correct it.
+
+```{r}
+
+addition <- functino(x,y) {
+  return(x+y)
+}
+
+addition(1, "number")
+
+```
+
+
+# Sources
+This post is a compilation of personal experience and reading from these amazing sources:
+
+* [Advanced R](https://adv-r.hadley.nz/debugging.html)
+* [GeeksForGeeks](https://www.geeksforgeeks.org/handling-errors-in-r-programming/)
+* [Mastering software development in R](https://bookdown.org/rdpeng/RProgDA/error-handling-and-generation.html)
+
+
+
+
 
 
 
