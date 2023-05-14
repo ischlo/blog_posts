@@ -1,0 +1,432 @@
+---
+title: "Using open source data for web maps"
+author: "Ivann Schlosser"
+output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float: yes
+    css: style_rmd.css
+    number_sections: yes
+    code_download: yes
+    highlight: pygments
+    fig_width: 6
+    fig_height: 4
+    fig_caption: yes
+    df_print: kable
+    theme: yeti
+  output: 
+editor_options: 
+  chunk_output_type: console
+knit: (rmarkdown::render(input="tennis_map/tennis_map.Rmd",output_file="index.html"))
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+
+# refer to https://bookdown.org/yihui/rmarkdown/template-structure.html 
+
+library(formatR)
+knitr::opts_chunk$set(echo = TRUE
+                      ,eval = FALSE
+                      ,include = TRUE
+                      ,message = FALSE
+                      ,warning = FALSE
+                      ,fig_caption = FALSE
+                      ,out.width = "80%"
+                      ,fig.align = "center"
+                      # ,tidy = TRUE
+                      # ,collapse = TRUE
+                      ,cache = FALSE)
+
+```
+
+# Introduction
+This post will cover the steps required to get data from an open source, analyze it, and then publish it as a interactive web document. The problem we will be trying to solve is to find all the tennis courts in London that are mapped in [OpenStreetMap](http://openstreetmap.org) and show them online so that we could refer to it when we want to play. As there are multiple services that allow to book courts, and some courts are in free access, it is sometimes difficult to find the best spot to play at.
+
+# Tools
+With the ambition to provide the basic knowledge that can further on be used on bigger data sets and on problem of any complexity, a set of different tools will be used. First, the command line tool osmosis to extract the relevant data from a raw OSM file, then R will be used to preprocess the data. Finally, a minimal web interface with a map will be done with HTML and Javascript. 
+
+Although for this specific task, pretty much all those steps can be done in R, first with the [osmdata](https://github.com/ropensci/osmdata) package for example to download the data, and then with shiny and leaflet to make a web map, a more "rigorous" workflow is explored here in order to get familiar with a wider set of tools that will be useful when the data sets of interest get very big, for example if we want to find the tennis courts in all of the United Kingdom or even Europe.
+
+# OpenStreetMap
+
+Considered one of the main open sources of geographic data in the world, OSM is natural choice to tackle the problem at hand. In order to get started and know want we are looking for, let's refer to the [map features](https://wiki.openstreetmap.org/wiki/Map_features) chapter if the Wiki. It is a good practice to look in it in order to understand the ways in which OSM data is classified. By looking for a the tennis tag, we find, unsurprinsingly, that it's **key** is *sport* and **value** is *tennis*. The question now is how do we get the tennis courts ? 
+
+## Nodes, ways, relations
+
+This is specific to how OSM stores any geographic feature. More on this can be found [here](https://wiki.openstreetmap.org/wiki/Elements). Basically, any feature of the map is constructed out of nodes, which can also be grouped into ways (the name is slightly confusing as it refers something more general, than a road, but rather to a set on nodes). A road segment for example can be identified as a way, which will have a set of nodes that locate the start and end of each individual straight line segment that constitutes a road. Each node can be independent as well. In the case of a road sign, it will simply be identified as a node. Both nodes and ways will have their set of tags. This includes the key and value that we looked at earlier, but also any other information that is known about the feature, such as its coordinates etc...
+
+
+# Data
+
+There are multiple ways to access OSM data, like the overpass API for example, we will use [geofabrick](https://www.geofabrik.de) and work with a bulk OSM file for the area of interest, in our case London. Navigate to the fileof interest by selecting the right geographical region and download the latest release. In the case of London it is [this link](http://download.geofabrik.de/europe/great-britain/england/greater-london.html). The data file should approximately be 90 MB in size and will contain, in a compressed format, all the data for London available on OSM at the specified data in the metadata. At the time of writing, it is 2023-04-10T20:21:02Z. Let's put this file in a repository called `data` inside our working directory. 
+
+## Processing
+
+Now that the data is downloaded, we will need to process it first in order to extract the relevant information, in our case the location of tennis courts in London. We will use a very powerful command line tool called [osmosis](https://wiki.openstreetmap.org/wiki/Osmosis). It allows to work on raw OSM data sets of pretty much any size and efficiently extract what we need from it. Follow the instruction on its wiki on how to download it. 
+
+Now open a terminal and type `osmosis` into it to check that your machine has set it up successfully. You should see a brief tutorial show up, which might be helpful to look at as a first example. 
+
+We will now create the command that will go through the raw data and take out what we ask it. 
+After calling the osmosis library, we need to specify the data we are working on with the `--read-pbf` command, and then we add the parameters explaining what to we want to extract. We will start by specifying a bounding box with the `--bounding-box` parameter to make sure we are extracting in the right area. Then, we add the keys and values we are interested in. This is done with the command `--tag-filter accept-ways sport=tennis` in which we add the ways we want accept, in other words want to extract. We will omit the relations by specifying `--tag-filter reject-relations`. Then we specify that we want to extract the nodes that are used in the ways as well with `--used-nodes`. The final information we need to provide is what to do with the output, in our case, we will write it locally into a XML file with the `--write-xml` command. 
+
+The final command looks like that: 
+
+```{bash}
+
+osmosis \
+--read-pbf data/london.osm.pbf \
+--bounding-box left=-0.5507 right=0.2994 top=51.7168 bottom=51.2499 \
+--tag-filter accept-ways sport=tennis \
+--tag-filter reject-relations \
+--used-nodes \
+--write-xml data/london_tennis.osm
+
+```
+
+Osmosis also allows to write short versions of commands to simplify the process, in our case, we can rewrite to have:
+
+```{bash}
+
+osmosis \
+--rb data/london.osm.pbf \
+--bb left=-0.5507 right=0.2994 top=51.7168 bottom=51.2499 \
+--tf accept-ways sport=tennis \
+--tf reject-relations \
+--un \
+--wx data/london_tennis.osm
+
+```
+
+Notice the escape character `\` that allows to write other multiple lines, making it easy to read.
+When the command is done executing you should have a file `london_tennis.osm` in the *data* folder, it should weight around 5.5 MB.
+
+We can now open this fie to have a preview and better understanding of the the structure of the file. We can see the node elements, and within, the tags *lat*, *lon* corresponding to their coordinates as well as an *id*. If we scroll further down, we see appearing ways that contain node ids and other tags, such as *sport*, *leisure*, *tennis*, *name*. 
+
+
+## Engineering 
+
+We have now narrowed down our data, but there is still some more to do to be able to use it for a web map. FOr this section, we will R to read in the XML files and further process the data. 
+
+### Reading XML data in R
+
+The *XML* package in R allows us to manipulate such data files with the user friendliness of R.
+We will read in the file, and define a few functions to assist us in extracting the attributes that we will use: 
+
+```{r}
+
+library(sf)
+library(data.table)
+library(dplyr)
+library(XML)
+library(foreach)
+library(Btoolkit)
+library(xml2)
+library(leaflet)
+library(leafgl)
+
+####
+
+get_nodes <- function(el, name = "nd", recursive = FALSE) {
+  kids = xmlChildren(el)
+  idx = (names(kids) == name)
+  els = kids[idx]
+  # if (!recursive || xmlSize(el) == 0) 
+  #   return(els)
+  # subs = xmlApply(el, xmlElementsByTagName, name, TRUE)
+  # subs = unlist(subs, recursive = FALSE)
+  # # append.xmlNode(els, subs[!sapply(subs, is.null)])
+  sapply(els, XML::xmlAttrs, USE.NAMES = FALSE) |> unname()
+}
+
+get_tags <- function(el, name = "tag", recursive = FALSE) {
+  kids = xmlChildren(el)
+  idx = (names(kids) == name)
+  els = kids[idx]
+  # if (!recursive || xmlSize(el) == 0) 
+  #   return(els)
+  # subs = xmlApply(el, xmlElementsByTagName, name, TRUE)
+  # subs = unlist(subs, recursive = FALSE)
+  # # append.xmlNode(els, subs[!sapply(subs, is.null)])
+  sapply(els,XML::xmlAttrs) |> 
+    unname() |> 
+    t() |> 
+    as.data.table() |> 
+    `names<-`(c("key","value"))
+  
+}
+
+#####
+
+london_tennis_xml <- XML::xmlParse("tennis_map/data/london_tennis.osm.xml")
+
+```
+
+### Nodes
+
+Now we can start extracting the nodes:  
+
+
+```{r}
+
+nodes <- getNodeSet(london_tennis_xml,"//node") # //node means we want only node tags from the XML
+
+# this function is applied to each separate //node element and gets its attributes. 
+nodes <- xmlApply(nodes, xmlAttrs) 
+
+# reformat the data into a data table with id, lon, lat variables. 
+nodes_dt <- sapply(nodes, FUN = function(nd) c(id = nd[["id"]],lon = nd[["lon"]],lat = nd[["lat"]])) |> 
+  t() |> 
+  as.data.table() 
+
+# nodes_dt
+nodes_dt[,id:=as.character(id)] # make sure ids are stored as character
+
+
+```
+
+
+### Ways
+
+Now the ways, it is a bit more complicated here, because each way contains a potentially different number of nodes and key-value pairs. To help us extract the data properly, we defined the functions earlier. 
+
+
+```{r}
+
+ways <-
+  XML::xpathApply(london_tennis_xml, "//way", fun = function(w) {w})
+
+# get_tags(ways[[1]])
+
+way_nodes <- lapply(ways, FUN = function(w) {list(id = XML::xmlGetAttr(w,"id")
+                                                      ,nodes = get_nodes(w)
+                                                      ,tags = get_tags(w)
+                                                  )
+})
+
+```
+
+Let's have a look at all the unique keys that we extracted:
+```{r}
+
+sapply(way_nodes, FUN = function(way) way$tags$key) |> unlist() |> unique()
+
+```
+
+Now we will add the coordinates of the nodes to each way.
+
+```{r}
+
+for (j in 1:length(way_nodes)) {
+  way_nodes[[j]]$nodes <- cbind(way_nodes[[j]]$nodes,nodes_dt[match(way_nodes[[j]]$nodes,id),.(lon,lat)])
+}
+
+```
+
+Finally, let's create polygons for each way corresponding to a single court, or a sports facility containing tennis courts.
+
+```{r}
+
+tennis_courts <- foreach::foreach(i = 1:length(way_nodes)) %do% {
+  nds <- way_nodes[[i]]$nodes[,.(as.double(lon),as.double(lat))] |> 
+    as.matrix()
+  if(any(is.na(nds))) sf::st_polygon(x = list(),dim = "XY") else sf::st_polygon(x = list(nds),dim = "XY")
+}
+
+tennis_courts <- tennis_courts |> st_sfc(crs = 4326) |> st_as_sf()
+
+```
+
+
+
+### Popup
+
+Now with the key-value pairs containing information about the courts we can create character containint HTML that will be shown as a popup on our map. 
+
+```{r}
+
+popups <- sapply(way_nodes, function(pitch) paste("<h4>"
+                                                  ,pitch$tags$key
+                                                  ," : "
+                                                  ,pitch$tags$value
+                                                  ,"</h4>"
+                                                  ,sep = ""
+                                                  ,collapse = " "))
+
+
+####
+
+tennis_courts$popups <- popups
+
+```
+
+Finally, we save the data as a geojson file in a data folder that we will use for our webpage.
+
+# Webpage bulding
+
+The following scripts contain the minimum necessary to build a simple webpage with a leaflet map and a few boxes with information. The folder with the correct file structure can be [downloaded directly]() ADD LINK. 
+
+```{html}
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+
+  <title> Map of tennis courts in Greater London </title>
+  <link rel="stylesheet" href="css/tennis_style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+     integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+     crossorigin=""/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+     integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
+     crossorigin=""></script>
+
+  <script src="js/leaflet-providers.js"></script>
+  
+</head>
+
+<body>
+  
+  <div id="map">
+    <div id="title">
+      <h2> Tennis courts in London </h2>
+    </div>
+    <div id="summary_info">
+      
+      <p> This map shows the tennis courts across Greater London and the information known about each of them on <a href='openstreetmap.org'> OpenStreetMap </a> in a popup. </p>
+    </div>
+    
+  </div>
+    
+  <div id="footer">
+    <p> Created by ... </p>
+  </div>
+
+  <script src="data/data.js" type="text/javascript"></script>
+  <script src="js/tennis_map.js" type="text/javascript"></script>
+
+</body>
+
+</html>
+
+
+```
+
+
+Add some styles: 
+
+
+```{css }
+p {
+  font-size: 12px;
+  font-family: helvetica;
+}
+
+
+#map {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  min-width: 500px;
+  min-height: 300px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+
+#summary_info {
+  position: absolute;
+  width: 20%;
+  height: auto;
+  z-index: 430;
+  background-color: white;
+  margin: 20px;
+  left: 0;
+  bottom: 0;
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 5px;
+  padding: 10px;
+}
+
+
+#title {
+  position: absolute;
+  width: auto;
+  height: auto;
+  z-index: 431;
+  background-color: white;
+  margin: 10px;
+  right: 0;
+  top: 0;
+  border-style: solid;
+  border-width: 2px;
+  border-color: black;
+  border-radius: 5px;
+  padding: 5px;
+}
+
+
+#footer {
+  position: absolute;
+  width: auto;
+  height: auto;
+  z-index: 431;
+  background-color: white;
+  right: -1px;
+  bottom: 30px;
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  border-radius: 5px 0px 0px 5px;
+  padding: 5px;
+  display: inline-block;
+}
+
+```
+
+And some javascript to make the map: 
+
+```{javascript}
+
+
+var map = L.map('map',{
+  zoomSnap: 0,
+  zoomDelta:.4,
+  trackResize: true,
+  center: [51.5148, -0.1269],
+  maxBounds: L.latLngBounds([51.8, -0.7], [51.2, 0.41]),
+  zoom: 12,
+  minZoom: 11,
+  maxZoom: 18
+});
+
+L.tileLayer.provider('Stamen.Toner').addTo(map);
+
+
+L.geoJSON(tennis_geoms,{
+  style: { 
+        color : '#ff4f5a',
+        opacity: 1,
+        fillOpacity: .5,
+        fillColor: '#ff4f00'
+      },
+  onEachFeature: function(feature,layer) {
+    popupOptions = {closeOnClick: true };
+    layer.bindPopup(feature.properties.popups,popupOptions);
+  }
+}).addTo(map);
+
+```
+
+
+Make sure to have a separate folder containing the web related files, in which you will have a folder css with the stylesheets, a folder js with the javascript file. You can set your own color preferences and background map using the [leaflet-providers](https://leaflet-extras.github.io/leaflet-providers/preview/) plugin.
+
+The final result should look something like the [following](https://ischlo.github.io/tennis_london/).
