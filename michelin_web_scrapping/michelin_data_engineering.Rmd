@@ -6,7 +6,7 @@ output:
     code_folding: show
     toc: yes
     toc_float: yes
-    css: style_rmd.css
+    css: www/style_rmd.css
     number_sections: yes
     code_download: yes
     highlight: pygments
@@ -17,6 +17,7 @@ output:
     theme: yeti
 editor_options: 
   chunk_output_type: console
+knit: (rmarkdown::render(input="michelin_web_scrapping/michelin_data_engineering.Rmd",output_file="index.html",clean=TRUE))
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
@@ -37,7 +38,7 @@ knitr::opts_chunk$set(echo = TRUE
 
 # Introduction
 
-Sometime, you can find intresting data for a project on the web, and quite often it will be possible to download the raw dataset,like a spreadsheet, csv or json, for your own use. However, this is not always the case. And in these kind of cases, there is always the possibility to try web-scrapping. While it can seem like a lengthy extra step towards the realization of your intended idea, it can also give you the opportunity to develop a new skill, and undertand better how websites work in general.   
+Sometime, you can find interesting data for a project on the web, and quite often it will be possible to download the raw data set,like a spreadsheet, csv or json, for your own use. However, this is not always the case. And in these kind of cases, there is always the possibility to try web-scrapping. While it can seem like a lengthy extra step towards the realization of your intended idea, it can also give you the opportunity to develop a new skill, and understand better how websites work in general.   
 Web scrapping is generally legal, so you shouldn't feel like you are doing something wrong when scrapping data. Occasionally, some web sites will have protection against it, but you still can manage to get what you want.
 This post will show an example of using the [**rvest**](https://rvest.tidyverse.org) package ( another great package from the **tidyverse** team) to scrap data from the 
 website of [michelin restaurants](https://guide.michelin.com/gb/en). Their data is not accessible online in raw format, so we have a true real-world case in hands.

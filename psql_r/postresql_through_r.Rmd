@@ -17,6 +17,8 @@ output:
     theme: yeti
 editor_options: 
   chunk_output_type: console
+knit: (rmarkdown::render(input="psql_r/postresql_through_r.Rmd",output_file="index.html"))
+
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
